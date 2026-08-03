@@ -53,7 +53,7 @@ class Language extends MinphpLanguage
         self::ensureSettings();
         return call_user_func_array([get_parent_class(self::class), 'getText'], func_get_args());
     }
-
+    
     /**
      * {@inheritdoc}
      */

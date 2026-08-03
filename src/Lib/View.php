@@ -158,6 +158,13 @@ class View extends Language
             . $this->view . DIRECTORY_SEPARATOR . $this->file . $this->view_ext;
 
         if (is_array($this->vars)) {
+            if (isset($this->vars['file'])) {
+                unset($this->vars['file']);
+            }
+            if (isset($this->vars['view'])) {
+                unset($this->vars['view']);
+            }
+
             extract($this->vars);
         }
 

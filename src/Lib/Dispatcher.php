@@ -111,7 +111,7 @@ class Dispatcher extends Controller
 
         if (!class_exists($controllerClass) || !method_exists($controllerClass, 'preAction')) {
             throw new Exception(
-                sprintf('%s is not a valid controller', $controllerClass),
+                sprintf('%s is not a valid controller', $controllerClass . print_r(debug_backtrace(), true)),
                 404
             );
         }
