@@ -34,6 +34,22 @@ class View extends Language
     public $default_view;
 
     /**
+     * @var string An optional view directory, within the view path, preferred over $view.
+     *  Set to allow individual views to be overridden for an active template, any view the
+     *  template directory does not contain falls back to $view.
+     * @see View::setTemplate()
+     */
+    public $template;
+
+    /**
+     * @var string The view directory $template may override. $template is only applied while
+     *  $view matches this, so that a view which has deliberately moved to a directory of its
+     *  own is never overridden.
+     * @see View::setTemplate()
+     */
+    public $template_view;
+
+    /**
      * @var string This view's relative path
      */
     public $view_dir;
@@ -93,6 +109,23 @@ class View extends Language
     }
 
     /**
+     * Sets a view directory to prefer over $view, per file, while $view is $template_view.
+     *
+     * Any view the template directory does not contain falls back to $template_view, so a
+     * template may override as few or as many views as it likes. The override is limited to
+     * $template_view so that a view which has since moved to a directory of its own is left
+     * alone rather than being silently overridden.
+     *
+     * @param string $template The view directory to prefer, within the view path
+     * @param string $view The view directory $template may override
+     */
+    final public function setTemplate($template, $view)
+    {
+        $this->template = $template;
+        $this->template_view = $view;
+    }
+
+    /**
      * Sets the view file and view to be used for this View
      *
      * @param string $file The file name to load
@@ -109,7 +142,19 @@ class View extends Language
         list($view_path, $view) = $this->getViewPath($view);
         $this->view = $view;
         $this->view_path = $view_path;
-        $this->view_dir = str_replace(
+        $this->view_dir = $this->buildViewDir($view_path, $view);
+    }
+
+    /**
+     * Builds the web accessible directory for the given view path and view
+     *
+     * @param string $view_path The view path the view resides in
+     * @param string $view The view directory
+     * @return string The view directory relative to the public web directory
+     */
+    private function buildViewDir($view_path, $view)
+    {
+        return str_replace(
             "\\",
             "/",
             str_replace(
@@ -156,6 +201,33 @@ class View extends Language
         $file = $this->container->get('minphp.constants')['ROOTWEBDIR']
             . $this->view_path . 'views' . DIRECTORY_SEPARATOR
             . $this->view . DIRECTORY_SEPARATOR . $this->file . $this->view_ext;
+
+        // Prefer a view of the same name from the template directory, when one is set and this
+        // view is still the one it may override. This allows individual views to be overridden
+        // for the active template, while any view the template directory does not contain falls
+        // back to the view directory below.
+        if (!empty($this->template)
+            && $this->template !== $this->view
+            && $this->template_view === $this->view
+        ) {
+            $template_file = $this->container->get('minphp.constants')['ROOTWEBDIR']
+                . $this->view_path . 'views' . DIRECTORY_SEPARATOR
+                . $this->template . DIRECTORY_SEPARATOR . $this->file . $this->view_ext;
+
+            // See the note below regarding macOS and symbolic links
+            if (!file_exists($template_file) && strpos(strtolower(PHP_OS), 'darwin') !== false) {
+                $template_file = $this->view_path . 'views' . DIRECTORY_SEPARATOR
+                    . $this->template . DIRECTORY_SEPARATOR . $this->file . $this->view_ext;
+            }
+
+            if (file_exists($template_file)) {
+                $file = $template_file;
+
+                // Point the view directory at the template so that any asset the view
+                // references resolves against the directory the view was loaded from
+                $this->view_dir = $this->buildViewDir($this->view_path, $this->template);
+            }
+        }
 
         if (is_array($this->vars)) {
             if (isset($this->vars['file'])) {

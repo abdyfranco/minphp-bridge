@@ -1,0 +1,1 @@
+TEMPLATE-MAIN|<?php echo $this->view_dir; ?>

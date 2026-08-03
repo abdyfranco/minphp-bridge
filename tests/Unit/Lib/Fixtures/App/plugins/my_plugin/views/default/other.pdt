@@ -1,0 +1,1 @@
+DEFAULT-OTHER|<?php echo $this->view_dir; ?>
